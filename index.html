@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Cyber Python IDE with Cloud Save</title>
+    
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closebrackets.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDocs, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Твой личный конфиг Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXNFEMxYAqjt4Nxhs8zRpbEcwshN-eDT0",
+            authDomain: "farma-6cc0a.firebaseapp.com",
+            projectId: "farma-6cc0a",
+            storageBucket: "farma-6cc0a.firebasestorage.app",
+            messagingSenderId: "863837240527",
+            appId: "1:863837240527:web:9caab2aff08f45976acbba",
+            measurementId: "G-MVKTNWB48P"
+        };
+
+        // Инициализируем Firebase и Firestore (Базу данных)
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Делаем функции Firebase доступными глобально для нашего старого скрипта
+        window.db = db;
+        window.fsDoc = doc;
+        window.fsSetDoc = setDoc;
+        window.fsGetDocs = getDocs;
+        window.fsCollection = collection;
+        window.fsDeleteDoc = deleteDoc;
+
+        // Как только Firebase готов, загружаем проекты из облака
+        window.loadCloudProjects();
+    </script>
+
+    <style>
+        :root {
+            --bg-dark: #121214;
+            --bg-card: #1c1c1f;
+            --yellow: #ffcc00;
+            --yellow-glow: rgba(255, 204, 0, 0.3);
+            --text: #e1e1e6;
+            --text-dark: #8c8c96;
+            --red: #ff4a4a;
+            --green: #2ecc71;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .header-navigation {
+            display: flex;
+            gap: 15px;
+            border-bottom: 2px solid #29292e;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        .tab-btn {
+            background: var(--bg-card);
+            color: var(--text-dark);
+            border: 1px solid #29292e;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transform: perspective(100px) translateZ(0);
+        }
+
+        .tab-btn:hover {
+            color: var(--yellow);
+            border-color: var(--yellow);
+            transform: perspective(100px) translateZ(3px);
+        }
+
+        .tab-btn.active {
+            background: var(--yellow);
+            color: var(--bg-dark);
+            border-color: var(--yellow);
+            box-shadow: 0 0 15px var(--yellow-glow);
+            transform: perspective(100px) translateZ(6px);
+        }
+
+        .tab-content {
+            display: none;
+            animation: swipeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes swipeIn {
+            from { transform: translateX(80px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* IDE Стили */
+        .ide-container {
+            position: relative;
+            background: var(--bg-card);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid #29292e;
+        }
+
+        .current-project-title {
+            color: var(--yellow);
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .editor-box {
+            position: relative;
+            overflow: hidden;
+            border-radius: 6px;
+            border: 1px solid #29292e;
+        }
+
+        .CodeMirror {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            background-color: #141416 !important;
+            color: #ffe066 !important;
+            height: 320px;
+        }
+
+        .CodeMirror-gutters { background-color: #0d0d0f !important; border-right: 1px solid #222225; }
+        .CodeMirror-linenumber { color: #52525b !important; }
+
+        /* Подсветка */
+        .cm-s-default .cm-keyword { color: #ff79c6 !important; font-weight: bold; }
+        .cm-s-default .cm-builtin { color: #8be9fd !important; }
+        .cm-s-default .cm-string { color: #f1fa8c !important; }
+        .cm-s-default .cm-number { color: #bd93f9 !important; }
+        .cm-s-default .cm-comment { color: #6272a4 !important; font-style: italic; }
+        .cm-s-default .cm-def { color: #50fa7b !important; }
+        .cm-s-default .cm-variable { color: #ffe066 !important; }
+        .cm-s-default .cm-operator { color: #ffb86c !important; }
+
+        /* Выдвижная панель символов */
+        .symbols-panel {
+            position: absolute;
+            top: 0;
+            right: -140px;
+            width: 120px;
+            height: 100%;
+            background: rgba(28, 28, 31, 0.98);
+            border-left: 2px solid var(--yellow);
+            z-index: 10;
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .symbols-panel.open {
+            right: 0;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.6);
+        }
+
+        .panel-toggle-arrow {
+            position: absolute;
+            top: 50%;
+            left: -32px;
+            transform: translateY(-50%);
+            background: var(--yellow);
+            color: var(--bg-dark);
+            border: none;
+            width: 32px;
+            height: 45px;
+            border-radius: 8px 0 0 8px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: -3px 0 10px var(--yellow-glow);
+        }
+
+        .symbols-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 10px;
+            height: calc(100% - 20px);
+            overflow-y: auto;
+        }
+
+        .btn-char {
+            background: #29292e;
+            color: var(--yellow);
+            border: 1px solid #3e3e42;
+            padding: 8px;
+            font-size: 16px;
+            font-family: monospace;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-char:hover { background: var(--yellow); color: var(--bg-dark); }
+
+        .ide-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn-action {
+            border: none; padding: 12px 28px; font-size: 15px; font-weight: bold;
+            border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px;
+            transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .btn-run { background: var(--green); color: white; }
+        .btn-run:hover { background: #27ae60; box-shadow: 0 0 12px rgba(46,204,113,0.4); }
+
+        .btn-stop { background: var(--red); color: white; }
+        .btn-stop:hover { background: #c0392b; box-shadow: 0 0 12px rgba(231,76,60,0.4); }
+
+        /* Консоль */
+        .console-box {
+            margin-top: 20px; background: #0d0d0f; border: 1px solid #222225; border-radius: 6px; padding: 15px;
+        }
+
+        .console-title { color: var(--text-dark); font-size: 13px; margin-bottom: 8px; text-transform: uppercase; }
+
+        #output { color: #a3ffa3; font-family: 'Courier New', monospace; font-size: 15px; margin: 0; white-space: pre-wrap; min-height: 60px; }
+
+        /* Директория */
+        .directory-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+
+        .btn-create {
+            background: var(--yellow); color: var(--bg-dark); border: none; padding: 12px 25px;
+            font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer;
+            display: flex; align-items: center; gap: 10px; box-shadow: 0 0 15px var(--yellow-glow);
+        }
+
+        .projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+
+        .project-card {
+            background: var(--bg-card); border: 1px solid #29292e; border-radius: 10px; padding: 20px;
+            display: flex; flex-direction: column; justify-content: space-between; height: 140px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.4); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .project-card:hover { transform: translateY(-5px); border-color: var(--yellow); box-shadow: 0 12px 24px rgba(255,204,0,0.15); }
+
+        .project-info h4 { color: var(--yellow); margin: 0 0 8px 0; font-size: 18px; font-family: 'Courier New', monospace; }
+        .project-info p { color: var(--text-dark); font-size: 12px; margin: 0; }
+
+        .project-card-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
+
+        .btn-card-action {
+            background: #29292e; color: var(--text); border: 1px solid #3e3e42; padding: 6px 12px;
+            font-size: 13px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+        }
+
+        .btn-card-action.open-p:hover { background: var(--yellow); color: var(--bg-dark); }
+        .btn-card-action.edit-p:hover { background: #3498db; color: white; }
+        .btn-card-action.delete-p:hover { background: var(--red); color: white; }
+    </style>
+</head>
+<body>
+
+    <div class="header-navigation">
+        <button class="tab-btn active" onclick="switchTab('ide')"><i class="fa-solid fa-code"></i> IDE</button>
+        <button class="tab-btn" onclick="switchTab('directory')"><i class="fa-solid fa-folder-tree"></i> Директория</button>
+    </div>
+
+    <div id="tab-ide" class="tab-content active">
+        <div class="ide-container">
+            <div class="current-project-title" id="currentProjectTitle">
+                <i class="fa-regular fa-file-code"></i> Загрузка активного проекта...
+            </div>
+
+            <div class="editor-box">
+                <textarea id="code"></textarea>
+                
+                <div class="symbols-panel" id="symbolsPanel">
+                    <button class="panel-toggle-arrow" onclick="toggleSymbolsPanel()">
+                        <i id="arrowIcon" class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <div class="symbols-grid">
+                        <button class="btn-char" onclick="insertChar(':')">:</button>
+                        <button class="btn-char" onclick="insertChar('=')">=</button>
+                        <button class="btn-char" onclick="insertChar('(')">(</button>
+                        <button class="btn-char" onclick="insertChar(')')">)</button>
+                        <button class="btn-char" onclick="insertChar('[')">[</button>
+                        <button class="btn-char" onclick="insertChar(']')">]</button>
+                    
+                        <button class="btn-char" onclick="insertChar('\'')">'</button>
+                        <button class="btn-char" onclick="insertChar('<')">&lt;</button>
+                        <button class="btn-char" onclick="insertChar('>')">&gt;</button>
+                        <button class="btn-char" onclick="insertChar('+')">+</button>
+                        <button class="btn-char" onclick="insertChar('#')">#</button>
+                        <button class="btn-char" onclick="insertChar('    ')">⇥</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ide-actions">
+                <button class="btn-action btn-run" onclick="runPython()"><i class="fa-solid fa-play"></i> ПУСК</button>
+                <button class="btn-action btn-stop" onclick="clearOutput()"><i class="fa-solid fa-square"></i> СТОП</button>
+            </div>
+        </div>
+
+        <div class="console-box">
+            <div class="console-title"><i class="fa-solid fa-terminal"></i> Консоль вывода</div>
+            <pre id="output">Загрузка ядра Python...</pre>
+        </div>
+    </div>
+
+    <div id="tab-directory" class="tab-content">
+        <div class="directory-controls">
+            <h3><i class="fa-solid fa-folder-open"></i> Твои облачные проекты</h3>
+            <button class="btn-create" onclick="createProject()">
+                <i class="fa-solid fa-folder-plus"></i> Создать проект
+            </button>
+        </div>
+        <div class="projects-grid" id="projectsGrid"></div>
+    </div>
+
+    <script>
+        let pyodide;
+        let editor;
+        let currentProjectId = 'main';
+        let projects = {
+            'main': { name: 'main', code: '# Мой первый код\nprint("Загрузка облака...")' }
+        };
+
+        // Дебаунс таймер, чтобы не слать запросы в базу при вводе каждого символа, а ждать конца ввода
+        let saveTimeout;
+
+        window.onload = function() {
+            editor = CodeMirror.fromTextArea(document.getElementById("code"), {
+                mode: "python",
+                lineNumbers: true,
+                autoCloseBrackets: true,
+                matchBrackets: true,
+                indentUnit: 4
+            });
+
+            editor.on("change", () => {
+                if (projects[currentProjectId]) {
+                    projects[currentProjectId].code = editor.getValue();
+                    
+                    // Облачное автосохранение через 1 секунду после того, как ты перестал писать
+                    clearTimeout(saveTimeout);
+                    saveTimeout = setTimeout(() => {
+                        saveProjectToCloud(currentProjectId);
+                    }, 1000);
+                }
+            });
+        };
+
+        async function initPyodide() {
+            pyodide = await loadPyodide();
+            document.getElementById("output").innerText = "Система Python и Облако запущены!";
+            document.getElementById("output").style.color = "#a3ffa3";
+        }
+        initPyodide();
+
+        // ФУНКЦИЯ: Загрузка всех проектов из Firebase Cloud
+        window.loadCloudProjects = async function() {
+            try {
+                const querySnapshot = await window.fsGetDocs(window.fsCollection(window.db, "projects"));
+                let loadedProjects = {};
+                
+                querySnapshot.forEach((doc) => {
+                    loadedProjects[doc.id] = doc.data();
+                });
+
+                if (Object.keys(loadedProjects).length > 0) {
+                    projects = loadedProjects;
+                    // Если текущего проекта нет в облаке, берем первый попавшийся
+                    if (!projects[currentProjectId]) {
+                        currentProjectId = Object.keys(projects)[0];
+                    }
+                } else {
+                    // Если база пустая, заливаем дефолтный проект
+                    await saveProjectToCloud('main');
+                }
+
+                editor.setValue(projects[currentProjectId].code);
+                updateProjectHeader();
+                renderProjects();
+            } catch (e) {
+                console.error("Ошибка загрузки из Firebase: ", e);
+            }
+        };
+
+        // ФУНКЦИЯ: Сохранение проекта в Облако
+        async function saveProjectToCloud(id) {
+            if (!window.db) return;
+            try {
+                await window.fsSetDoc(window.fsDoc(window.db, "projects", id), {
+                    name: projects[id].name,
+                    code: projects[id].code
+                });
+                console.log(`Проект ${id} успешно сохранен в облаке!`);
+            } catch (e) {
+                console.error("Ошибка сохранения в облако: ", e);
+            }
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            if (tabName === 'ide') {
+                document.querySelector('[onclick="switchTab(\'ide\')"]').classList.add('active');
+                document.getElementById('tab-ide').classList.add('active');
+                setTimeout(() => editor.refresh(), 50);
+            } else {
+                document.querySelector('[onclick="switchTab(\'directory\')"]').classList.add('active');
+                document.getElementById('tab-directory').classList.add('active');
+                renderProjects();
+            }
+        }
+
+        function toggleSymbolsPanel() {
+            const panel = document.getElementById('symbolsPanel');
+            const arrow = document.getElementById('arrowIcon');
+            panel.classList.toggle('open');
+            arrow.className = panel.classList.contains('open') ? "fa-solid fa-chevron-right" : "fa-solid fa-chevron-left";
+        }
+
+        function insertChar(char) {
+            editor.getDoc().replaceRange(char, editor.getDoc().getCursor());
+            editor.focus();
+        }
+
+        function updateProjectHeader() {
+            document.getElementById('currentProjectTitle').innerHTML = 
+                `<i class="fa-regular fa-file-code"></i> Активный проект: ${projects[currentProjectId].name}.py`;
+        }
+
+        function renderProjects() {
+            const grid = document.getElementById('projectsGrid');
+            grid.innerHTML = "";
+
+            Object.keys(projects).forEach(id => {
+                const p = projects[id];
+                const card = document.createElement('div');
+                card.className = 'project-card';
+                card.innerHTML = `
+                    <div class="project-info">
+                        <h4><i class="fa-brands fa-python"></i> ${p.name}.py</h4>
+                        <p>Строк кода: ${p.code.split('\n').length}</p>
+                    </div>
+                    <div class="project-card-actions">
+                        <button class="btn-card-action open-p" onclick="openProject('${id}')"><i class="fa-solid fa-folder-open"></i> Открыть</button>
+                        <button class="btn-card-action edit-p" onclick="renameProject('${id}')"><i class="fa-solid fa-pen"></i> Имя</button>
+                        <button class="btn-card-action delete-p" onclick="deleteProject('${id}')"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        async function createProject() {
+            const name = prompt("Введите имя нового проекта:");
+            if (!name) return;
+            const id = name.replace(/[^a-zA-Z0-9_]/g, "").toLowerCase();
+            if (!id) return alert("Используйте английские буквы и цифры!");
+            if (projects[id]) return alert("Такой проект уже создан!");
+
+            projects[id] = {
+                name: name,
+                code: `# Проект: ${name}\n# Пиши свой код здесь...\n`
+            };
+            await saveProjectToCloud(id);
+            openProject(id);
+        }
+
+        function openProject(id) {
+            currentProjectId = id;
+            editor.setValue(projects[id].code);
+            updateProjectHeader();
+            switchTab('ide');
+            clearOutput();
+        }
+
+        async function renameProject(id) {
+            const newName = prompt("Введите новое имя проекта:", projects[id].name);
+            if (!newName) return;
+            projects[id].name = newName;
+            await saveProjectToCloud(id);
+            renderProjects();
+        }
+
+        async function deleteProject(id) {
+            if (Object.keys(projects).length <= 1) return alert("Нельзя удалить последний проект!");
+            if (confirm(`Удалить проект ${projects[id].name}.py из облака навсегда?`)) {
+                try {
+                    // Удаляем из облака
+                    await window.fsDeleteDoc(window.fsDoc(window.db, "projects", id));
+                    delete projects[id];
+                    if (currentProjectId === id) {
+                        currentProjectId = Object.keys(projects)[0];
+                        editor.setValue(projects[currentProjectId].code);
+                        updateProjectHeader();
+                    }
+                    renderProjects();
+                } catch (e) {
+                    alert("Ошибка удаления: " + e);
+                }
+            }
+        }
+
+        function clearOutput() {
+            const out = document.getElementById("output");
+            out.innerText = "Консоль очищена.";
+            out.style.color = "#8c8c96";
+        }
+
+        async function runPython() {
+            if (!pyodide) return;
+            const out = document.getElementById("output");
+            out.innerText = "Выполнение...";
+            out.style.color = "#ffcc00";
+
+            try {
+                await pyodide.runPythonAsync(`
+                    import sys
+                    import io
+                    sys.stdout = io.StringIO()
+                `);
+                await pyodide.runPythonAsync(editor.getValue());
+                const stdout = await pyodide.runPythonAsync("sys.stdout.getvalue()");
+                out.innerText = stdout || "Код успешно выполнен (вывода нет).";
+                out.style.color = "#a3ffa3";
+            } catch (err) {
+                out.innerText = "Ошибка в коде:\n" + err;
+                out.style.color = "#ff4a4a";
+            }
+        }
+    </script>
+</body>
