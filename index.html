@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Cyber Python IDE with Cloud Save</title>
+    <title>Cyber Python IDE</title>
     
     <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
 
@@ -13,38 +13,8 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDocs, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        // Твой личный конфиг Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyBXNFEMxYAqjt4Nxhs8zRpbEcwshN-eDT0",
-            authDomain: "farma-6cc0a.firebaseapp.com",
-            projectId: "farma-6cc0a",
-            storageBucket: "farma-6cc0a.firebasestorage.app",
-            messagingSenderId: "863837240527",
-            appId: "1:863837240527:web:9caab2aff08f45976acbba",
-            measurementId: "G-MVKTNWB48P"
-        };
-
-        // Инициализируем Firebase и Firestore (Базу данных)
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // Делаем функции Firebase доступными глобально для нашего старого скрипта
-        window.db = db;
-        window.fsDoc = doc;
-        window.fsSetDoc = setDoc;
-        window.fsGetDocs = getDocs;
-        window.fsCollection = collection;
-        window.fsDeleteDoc = deleteDoc;
-
-        // Как только Firebase готов, загружаем проекты из облака
-        window.loadCloudProjects();
-    </script>
-
     <style>
+        /* Главная палитра: Темно-серый и Неоново-желтый */
         :root {
             --bg-dark: #121214;
             --bg-card: #1c1c1f;
@@ -65,6 +35,7 @@
             overflow-x: hidden;
         }
 
+        /* 3D Вкладки сверху */
         .header-navigation {
             display: flex;
             gap: 15px;
@@ -101,6 +72,7 @@
             transform: perspective(100px) translateZ(6px);
         }
 
+        /* Анимация плавного свайпа контента */
         .tab-content {
             display: none;
             animation: swipeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -115,7 +87,7 @@
             to { transform: translateX(0); opacity: 1; }
         }
 
-        /* IDE Стили */
+        /* --- СТИЛИ ДЛЯ ВКЛАДКИ IDE --- */
         .ide-container {
             position: relative;
             background: var(--bg-card);
@@ -154,7 +126,7 @@
         .CodeMirror-gutters { background-color: #0d0d0f !important; border-right: 1px solid #222225; }
         .CodeMirror-linenumber { color: #52525b !important; }
 
-        /* Подсветка */
+        /* Подсветка кода */
         .cm-s-default .cm-keyword { color: #ff79c6 !important; font-weight: bold; }
         .cm-s-default .cm-builtin { color: #8be9fd !important; }
         .cm-s-default .cm-string { color: #f1fa8c !important; }
@@ -164,7 +136,7 @@
         .cm-s-default .cm-variable { color: #ffe066 !important; }
         .cm-s-default .cm-operator { color: #ffb86c !important; }
 
-        /* Выдвижная панель символов */
+        /* ВЫДВИЖНАЯ ПАНЕЛЬ СИМВОЛОВ */
         .symbols-panel {
             position: absolute;
             top: 0;
@@ -184,6 +156,7 @@
             box-shadow: -10px 0 30px rgba(0,0,0,0.6);
         }
 
+        /* Кнопка-стрелочка панели */
         .panel-toggle-arrow {
             position: absolute;
             top: 50%;
@@ -225,6 +198,7 @@
         }
         .btn-char:hover { background: var(--yellow); color: var(--bg-dark); }
 
+        /* Кнопки ПУСК / СТОП */
         .ide-actions {
             margin-top: 15px;
             display: flex;
@@ -232,9 +206,17 @@
         }
 
         .btn-action {
-            border: none; padding: 12px 28px; font-size: 15px; font-weight: bold;
-            border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px;
-            transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border: none;
+            padding: 12px 28px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
 
         .btn-run { background: var(--green); color: white; }
@@ -245,45 +227,118 @@
 
         /* Консоль */
         .console-box {
-            margin-top: 20px; background: #0d0d0f; border: 1px solid #222225; border-radius: 6px; padding: 15px;
+            margin-top: 20px;
+            background: #0d0d0f;
+            border: 1px solid #222225;
+            border-radius: 6px;
+            padding: 15px;
         }
 
-        .console-title { color: var(--text-dark); font-size: 13px; margin-bottom: 8px; text-transform: uppercase; }
+        .console-title {
+            color: var(--text-dark);
+            font-size: 13px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
 
-        #output { color: #a3ffa3; font-family: 'Courier New', monospace; font-size: 15px; margin: 0; white-space: pre-wrap; min-height: 60px; }
+        #output {
+            color: #a3ffa3;
+            font-family: 'Courier New', monospace;
+            font-size: 15px;
+            margin: 0;
+            white-space: pre-wrap;
+            min-height: 60px;
+        }
 
-        /* Директория */
-        .directory-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        /* --- СТИЛИ ДЛЯ ВКЛАДКИ ДИРЕКТОРИЯ --- */
+        .directory-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
 
         .btn-create {
-            background: var(--yellow); color: var(--bg-dark); border: none; padding: 12px 25px;
-            font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer;
-            display: flex; align-items: center; gap: 10px; box-shadow: 0 0 15px var(--yellow-glow);
+            background: var(--yellow);
+            color: var(--bg-dark);
+            border: none;
+            padding: 12px 25px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 0 15px var(--yellow-glow);
         }
 
-        .projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        /* Сетка 3D-карточек проектов */
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
 
         .project-card {
-            background: var(--bg-card); border: 1px solid #29292e; border-radius: 10px; padding: 20px;
-            display: flex; flex-direction: column; justify-content: space-between; height: 140px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.4); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            background: var(--bg-card);
+            border: 1px solid #29292e;
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 140px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform: translateY(0);
         }
 
-        .project-card:hover { transform: translateY(-5px); border-color: var(--yellow); box-shadow: 0 12px 24px rgba(255,204,0,0.15); }
+        .project-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--yellow);
+            box-shadow: 0 12px 24px rgba(255,204,0,0.15);
+        }
 
-        .project-info h4 { color: var(--yellow); margin: 0 0 8px 0; font-size: 18px; font-family: 'Courier New', monospace; }
-        .project-info p { color: var(--text-dark); font-size: 12px; margin: 0; }
+        .project-info h4 {
+            color: var(--yellow);
+            margin: 0 0 8px 0;
+            font-size: 18px;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.5px;
+        }
 
-        .project-card-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
+        .project-info p {
+            color: var(--text-dark);
+            font-size: 12px;
+            margin: 0;
+        }
+
+        .project-card-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 15px;
+        }
 
         .btn-card-action {
-            background: #29292e; color: var(--text); border: 1px solid #3e3e42; padding: 6px 12px;
-            font-size: 13px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+            background: #29292e;
+            color: var(--text);
+            border: 1px solid #3e3e42;
+            padding: 6px 12px;
+            font-size: 13px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: 0.2s;
         }
 
         .btn-card-action.open-p:hover { background: var(--yellow); color: var(--bg-dark); }
         .btn-card-action.edit-p:hover { background: #3498db; color: white; }
         .btn-card-action.delete-p:hover { background: var(--red); color: white; }
+
     </style>
 </head>
 <body>
@@ -296,7 +351,7 @@
     <div id="tab-ide" class="tab-content active">
         <div class="ide-container">
             <div class="current-project-title" id="currentProjectTitle">
-                <i class="fa-regular fa-file-code"></i> Загрузка активного проекта...
+                <i class="fa-regular fa-file-code"></i> Активный проект: main.py
             </div>
 
             <div class="editor-box">
@@ -313,7 +368,7 @@
                         <button class="btn-char" onclick="insertChar(')')">)</button>
                         <button class="btn-char" onclick="insertChar('[')">[</button>
                         <button class="btn-char" onclick="insertChar(']')">]</button>
-                    
+                        <button class="btn-char" onclick="insertChar('\"')">"</button>
                         <button class="btn-char" onclick="insertChar('\'')">'</button>
                         <button class="btn-char" onclick="insertChar('<')">&lt;</button>
                         <button class="btn-char" onclick="insertChar('>')">&gt;</button>
@@ -338,11 +393,12 @@
 
     <div id="tab-directory" class="tab-content">
         <div class="directory-controls">
-            <h3><i class="fa-solid fa-folder-open"></i> Твои облачные проекты</h3>
+            <h3><i class="fa-solid fa-folder-open"></i> Твои проекты</h3>
             <button class="btn-create" onclick="createProject()">
                 <i class="fa-solid fa-folder-plus"></i> Создать проект
             </button>
         </div>
+
         <div class="projects-grid" id="projectsGrid"></div>
     </div>
 
@@ -350,12 +406,12 @@
         let pyodide;
         let editor;
         let currentProjectId = 'main';
-        let projects = {
-            'main': { name: 'main', code: '# Мой первый код\nprint("Загрузка облака...")' }
-        };
 
-        // Дебаунс таймер, чтобы не слать запросы в базу при вводе каждого символа, а ждать конца ввода
-        let saveTimeout;
+        // Чистое локальное хранилище в браузере (БЕЗ FIREBASE)
+        let projects = JSON.parse(localStorage.getItem('cyber_ide_projects')) || {
+            'main': { name: 'main', code: '# Мой первый код\nprint("Привет из Cyber IDE!")' },
+            'loops_demo': { name: 'loops_demo', code: '# Шаблон циклов\nfor i in range(5):\n    print(f"Шаг: {i}")' }
+        };
 
         window.onload = function() {
             editor = CodeMirror.fromTextArea(document.getElementById("code"), {
@@ -366,68 +422,25 @@
                 indentUnit: 4
             });
 
+            // Локальное автосохранение
             editor.on("change", () => {
                 if (projects[currentProjectId]) {
                     projects[currentProjectId].code = editor.getValue();
-                    
-                    // Облачное автосохранение через 1 секунду после того, как ты перестал писать
-                    clearTimeout(saveTimeout);
-                    saveTimeout = setTimeout(() => {
-                        saveProjectToCloud(currentProjectId);
-                    }, 1000);
+                    saveToStorage();
                 }
             });
+
+            editor.setValue(projects[currentProjectId].code);
+            updateProjectHeader();
+            renderProjects();
         };
 
         async function initPyodide() {
             pyodide = await loadPyodide();
-            document.getElementById("output").innerText = "Система Python и Облако запущены!";
+            document.getElementById("output").innerText = "Система Python запущена и готова к работе!";
             document.getElementById("output").style.color = "#a3ffa3";
         }
         initPyodide();
-
-        // ФУНКЦИЯ: Загрузка всех проектов из Firebase Cloud
-        window.loadCloudProjects = async function() {
-            try {
-                const querySnapshot = await window.fsGetDocs(window.fsCollection(window.db, "projects"));
-                let loadedProjects = {};
-                
-                querySnapshot.forEach((doc) => {
-                    loadedProjects[doc.id] = doc.data();
-                });
-
-                if (Object.keys(loadedProjects).length > 0) {
-                    projects = loadedProjects;
-                    // Если текущего проекта нет в облаке, берем первый попавшийся
-                    if (!projects[currentProjectId]) {
-                        currentProjectId = Object.keys(projects)[0];
-                    }
-                } else {
-                    // Если база пустая, заливаем дефолтный проект
-                    await saveProjectToCloud('main');
-                }
-
-                editor.setValue(projects[currentProjectId].code);
-                updateProjectHeader();
-                renderProjects();
-            } catch (e) {
-                console.error("Ошибка загрузки из Firebase: ", e);
-            }
-        };
-
-        // ФУНКЦИЯ: Сохранение проекта в Облако
-        async function saveProjectToCloud(id) {
-            if (!window.db) return;
-            try {
-                await window.fsSetDoc(window.fsDoc(window.db, "projects", id), {
-                    name: projects[id].name,
-                    code: projects[id].code
-                });
-                console.log(`Проект ${id} успешно сохранен в облаке!`);
-            } catch (e) {
-                console.error("Ошибка сохранения в облако: ", e);
-            }
-        }
 
         function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -436,7 +449,7 @@
             if (tabName === 'ide') {
                 document.querySelector('[onclick="switchTab(\'ide\')"]').classList.add('active');
                 document.getElementById('tab-ide').classList.add('active');
-                setTimeout(() => editor.refresh(), 50);
+                setTimeout(() => editor.refresh(), 50); 
             } else {
                 document.querySelector('[onclick="switchTab(\'directory\')"]').classList.add('active');
                 document.getElementById('tab-directory').classList.add('active');
@@ -452,8 +465,13 @@
         }
 
         function insertChar(char) {
-            editor.getDoc().replaceRange(char, editor.getDoc().getCursor());
+            const doc = editor.getDoc();
+            doc.replaceRange(char, doc.getCursor());
             editor.focus();
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('cyber_ide_projects', JSON.stringify(projects));
         }
 
         function updateProjectHeader() {
@@ -484,19 +502,19 @@
             });
         }
 
-        async function createProject() {
+        function createProject() {
             const name = prompt("Введите имя нового проекта:");
             if (!name) return;
             const id = name.replace(/[^a-zA-Z0-9_]/g, "").toLowerCase();
-            if (!id) return alert("Используйте английские буквы и цифры!");
-            if (projects[id]) return alert("Такой проект уже создан!");
+            if (!id) return alert("Используйте только английские буквы и цифры!");
+            if (projects[id]) return alert("Проект с таким именем уже есть!");
 
             projects[id] = {
                 name: name,
                 code: `# Проект: ${name}\n# Пиши свой код здесь...\n`
             };
-            await saveProjectToCloud(id);
-            openProject(id);
+            saveToStorage();
+            renderProjects(); // Перерисовываем Директорию, теперь проект сразу отобразится!
         }
 
         function openProject(id) {
@@ -507,30 +525,28 @@
             clearOutput();
         }
 
-        async function renameProject(id) {
+        function renameProject(id) {
             const newName = prompt("Введите новое имя проекта:", projects[id].name);
             if (!newName) return;
             projects[id].name = newName;
-            await saveProjectToCloud(id);
+            saveToStorage();
             renderProjects();
         }
 
-        async function deleteProject(id) {
-            if (Object.keys(projects).length <= 1) return alert("Нельзя удалить последний проект!");
-            if (confirm(`Удалить проект ${projects[id].name}.py из облака навсегда?`)) {
-                try {
-                    // Удаляем из облака
-                    await window.fsDeleteDoc(window.fsDoc(window.db, "projects", id));
-                    delete projects[id];
-                    if (currentProjectId === id) {
-                        currentProjectId = Object.keys(projects)[0];
-                        editor.setValue(projects[currentProjectId].code);
-                        updateProjectHeader();
-                    }
-                    renderProjects();
-                } catch (e) {
-                    alert("Ошибка удаления: " + e);
+        function deleteProject(id) {
+            if (Object.keys(projects).length <= 1) {
+                alert("Нельзя удалить единственный проект!");
+                return;
+            }
+            if (confirm(`Удалить проект ${projects[id].name}.py?`)) {
+                delete projects[id];
+                if (currentProjectId === id) {
+                    currentProjectId = Object.keys(projects)[0];
+                    editor.setValue(projects[currentProjectId].code);
+                    updateProjectHeader();
                 }
+                saveToStorage();
+                renderProjects();
             }
         }
 
@@ -563,3 +579,4 @@
         }
     </script>
 </body>
+</html>
